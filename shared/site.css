@@ -84,7 +84,7 @@ a {
 .wrap {
   max-width: 840px;
   margin: 0 auto;
-  padding: 28px 20px 72px;
+  padding: 28px 20px 56px;
 }
 
 .hero h1,
@@ -165,14 +165,6 @@ a {
   font-weight: 700;
 }
 
-.site-foot {
-  max-width: 840px;
-  margin: 0 auto;
-  padding: 0 20px 40px;
-  color: var(--muted);
-  font-size: 14px;
-}
-
 .card {
   background: var(--sheet);
   border: 1px solid var(--line);
@@ -201,12 +193,6 @@ button:disabled {
 
 .primary:hover {
   background: #33261e;
-}
-
-.ghost {
-  background: transparent;
-  color: var(--ink);
-  border: 1px solid var(--line);
 }
 
 .ghost {
