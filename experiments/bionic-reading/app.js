@@ -1,6 +1,11 @@
+const HISTORY_KEY = "bionic-lab-attempts-v1";
+const HISTORY_MAX = 20;
+
 const state = {
   view: "intro",
   texts: null,
+  order: ["regular", "bionic"],
+  pass: 0,
   fromWiki: false,
   loading: false,
   loadError: "",
@@ -87,24 +92,53 @@ function wordsPerMinute(words, ms) {
   return Math.round((words / (ms / 1000)) * 60);
 }
 
+function currentKind() {
+  return state.order[state.pass];
+}
+
+function loadHistory() {
+  try {
+    const raw = JSON.parse(localStorage.getItem(HISTORY_KEY) || "[]");
+    return Array.isArray(raw) ? raw : [];
+  } catch (_error) {
+    return [];
+  }
+}
+
+function saveAttempt(entry) {
+  const list = [entry, ...loadHistory()].slice(0, HISTORY_MAX);
+  localStorage.setItem(HISTORY_KEY, JSON.stringify(list));
+}
+
+function clearHistory() {
+  localStorage.removeItem(HISTORY_KEY);
+}
+
 function buildTexts(pair) {
-  const extras = pair.extras || [];
-  return ["regular", "bionic"].reduce((acc, kind, index) => {
-    const article = pair.articles[index];
-    const payload = {
-      body: article.body,
-      sourceTitle: article.sourceTitle || article.title,
-    };
-    acc[kind] = {
-      title: kind === "regular" ? "Обычный шрифт" : "Бионический шрифт",
-      phase: kind,
-      body: article.body,
-      sourceTitle: payload.sourceTitle,
-      url: article.url || "",
-      questions: generateQuestions(payload, extras),
-    };
-    return acc;
-  }, {});
+  let [first, second] = pair.articles;
+  if (Math.random() < 0.5) [first, second] = [second, first];
+  const order = shuffle(["regular", "bionic"]);
+  return {
+    order,
+    sourceTitle: pair.sourceTitle || first.sourceTitle,
+    url: pair.url || first.url || "",
+    regular: {
+      title: "Обычный шрифт",
+      phase: "regular",
+      body: first.body,
+      sourceTitle: first.sourceTitle,
+      url: first.url || "",
+      questions: generateQuestions(first.body, second.body),
+    },
+    bionic: {
+      title: "Бионический шрифт",
+      phase: "bionic",
+      body: second.body,
+      sourceTitle: second.sourceTitle,
+      url: second.url || "",
+      questions: generateQuestions(second.body, first.body),
+    },
+  };
 }
 
 let loadPromise = null;
@@ -120,8 +154,9 @@ async function prepareTexts() {
       const pair = await loadTestTexts();
       state.fromWiki = Boolean(pair.fromWiki);
       state.texts = buildTexts(pair);
+      state.order = state.texts.order;
       if (!state.fromWiki) {
-        state.loadError = "Википедия сейчас недоступна, взяты запасные абзацы.";
+        state.loadError = "Википедия сейчас недоступна, взяты запасные абзацы одной темы.";
       }
     } finally {
       state.loading = false;
@@ -131,28 +166,51 @@ async function prepareTexts() {
   return loadPromise;
 }
 
+function persistHistory() {
+  const regular = state.texts.regular;
+  const bionic = state.texts.bionic;
+  const a = state.elapsed.regular;
+  const b = state.elapsed.bionic;
+  let faster = "tie";
+  if (a - b > 400) faster = "bionic";
+  if (b - a > 400) faster = "regular";
+  saveAttempt({
+    at: new Date().toISOString(),
+    article: state.texts.sourceTitle,
+    first: state.order[0],
+    regularMs: a,
+    bionicMs: b,
+    regularWpm: wordsPerMinute(wordCount(regular.body), a),
+    bionicWpm: wordsPerMinute(wordCount(bionic.body), b),
+    regularScore: state.scores.regular,
+    bionicScore: state.scores.bionic,
+    regularMax: regular.questions.length,
+    bionicMax: bionic.questions.length,
+    faster,
+  });
+}
+
 function render() {
   if (state.view === "intro") return renderIntro();
-  if (state.view === "read-regular") return renderRead("regular");
-  if (state.view === "quiz-regular") return renderQuiz("regular");
-  if (state.view === "read-bionic") return renderRead("bionic");
-  if (state.view === "quiz-bionic") return renderQuiz("bionic");
+  if (state.view === "read") return renderRead(currentKind());
+  if (state.view === "quiz") return renderQuiz(currentKind());
   return renderResults();
 }
 
 function renderIntro() {
   resetTimer();
   const busy = state.loading;
+  const tries = loadHistory().length;
   stage.innerHTML = `
     <section class="card">
       <h2>Как проходит тест</h2>
-      <p class="lead">Каждый запуск берёт два разных отрывка из русской Википедии. Сначала обычный шрифт и секундомер, затем бионический — начало каждого слова жирным. После каждого текста будут вопросы по прочитанному.</p>
+      <p class="lead">Два абзаца берутся из одной статьи Википедии — тема общая, сравнивается шрифт. Какой вариант будет первым, выбирается случайно. После каждого абзаца — вопросы по тому, что было именно в нём.</p>
       <ol class="steps">
-        <li><span class="num">1</span><span>Сайт сам подтягивает два новых отрывка из Википедии.</span></li>
+        <li><span class="num">1</span><span>Сайт нарезает два соседних абзаца одной статьи.</span></li>
         <li><span class="num">2</span><span>Секундомер стартует вместе с текстом. Прочитайте абзац один раз.</span></li>
-        <li><span class="num">3</span><span>Ответьте на вопросы. Потом то же самое со вторым абзацем.</span></li>
+        <li><span class="num">3</span><span>Ответьте на вопросы. Затем второй абзац в другом начертании.</span></li>
       </ol>
-      <p class="note">${busy ? "Ищу подходящие статьи и выравниваю длину отрывков…" : state.loadError || "Тексты каждый раз новые. Короткие заглушки и списки отбрасываются, чтобы абзацы были похожи по объёму."}</p>
+      <p class="note">${busy ? "Ищу статью, из которой получаются два сопоставимых абзаца…" : state.loadError || (tries ? `Сохранено попыток на этом устройстве: ${tries}.` : "Попытки сохраняются в браузере, чтобы можно было сравнить заходы.")}</p>
       <div class="actions">
         <button class="primary" id="startTest" ${busy ? "disabled" : ""}>${busy ? "Загрузка…" : state.texts ? "Начать чтение" : "Загрузить тексты из Википедии"}</button>
       </div>
@@ -161,7 +219,10 @@ function renderIntro() {
   document.getElementById("startTest").onclick = async () => {
     await prepareTexts();
     if (!state.texts) return;
-    state.view = "read-regular";
+    state.pass = 0;
+    state.elapsed = { regular: null, bionic: null };
+    state.scores = { regular: null, bionic: null };
+    state.view = "read";
     render();
   };
 }
@@ -172,11 +233,11 @@ function renderRead(kind) {
   resetTimer();
   stage.innerHTML = `
     <section class="card">
-      <span class="phase ${item.phase}">Текст ${kind === "regular" ? "1" : "2"} · ${item.title}</span>
+      <span class="phase ${item.phase}">Абзац ${state.pass + 1} из 2 · ${item.title}</span>
       <h2>Прочитайте абзац</h2>
       <p class="note" id="hint">Секундомер ещё не запущен. Когда будете готовы, нажмите «Начать чтение».</p>
       <article class="passage hidden-text" id="passage">${html}</article>
-      <p class="meta">${wordCount(item.body)} слов · отрывок из русской Википедии, CC BY-SA</p>
+      <p class="meta">${wordCount(item.body)} слов · два абзаца одной статьи, CC BY-SA</p>
       <div class="actions">
         <button class="primary" id="toggleRead">Начать чтение</button>
       </div>
@@ -198,7 +259,7 @@ function renderRead(kind) {
       return;
     }
     state.elapsed[kind] = stopTimer();
-    state.view = kind === "regular" ? "quiz-regular" : "quiz-bionic";
+    state.view = "quiz";
     render();
   };
 }
@@ -228,8 +289,8 @@ function renderQuiz(kind) {
   stage.innerHTML = `
     <section class="card">
       <span class="phase ${item.phase}">Вопросы · ${item.title}</span>
-      <h2>Что вы запомнили?</h2>
-      <p class="note">Текст скрыт. Время чтения: <strong>${formatTime(state.elapsed[kind])}</strong></p>
+      <h2>Что было в этом абзаце?</h2>
+      <p class="note">Текст скрыт. Время чтения: <strong>${formatTime(state.elapsed[kind])}</strong>${item.questions.length ? "" : " Вопросов к этому отрывку не получилось — это редкий случай."}</p>
       <form class="quiz">${questions}</form>
       <div class="actions">
         <button class="primary" id="submitQuiz">Дальше</button>
@@ -238,26 +299,83 @@ function renderQuiz(kind) {
   `;
 
   document.getElementById("submitQuiz").onclick = () => {
-    let score = 0;
-    const missing = item.questions.some((q, i) => {
-      const chosen = document.querySelector(`input[name="q${i}"]:checked`);
-      if (!chosen) return true;
-      if (Number(chosen.value) === q.answer) score += 1;
-      return false;
-    });
-    if (missing) {
-      alert("Ответьте на все вопросы.");
-      return;
+    if (!item.questions.length) {
+      state.scores[kind] = 0;
+    } else {
+      let score = 0;
+      const missing = item.questions.some((q, i) => {
+        const chosen = document.querySelector(`input[name="q${i}"]:checked`);
+        if (!chosen) return true;
+        if (Number(chosen.value) === q.answer) score += 1;
+        return false;
+      });
+      if (missing) {
+        alert("Ответьте на все вопросы.");
+        return;
+      }
+      state.scores[kind] = score;
     }
-    state.scores[kind] = score;
-    state.view = kind === "regular" ? "read-bionic" : "results";
+    if (state.pass === 0) {
+      state.pass = 1;
+      state.view = "read";
+    } else {
+      persistHistory();
+      state.view = "results";
+    }
     render();
   };
 }
 
 function sourceLink(item) {
-  if (!item.url) return escapeHtml(item.sourceTitle);
-  return `<a href="${escapeHtml(item.url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(item.sourceTitle)}</a>`;
+  const title = escapeHtml(item.sourceTitle || "статья Википедии");
+  if (!item.url) return title;
+  return `<a href="${escapeHtml(item.url)}" target="_blank" rel="noopener noreferrer">${title}</a>`;
+}
+
+function fontLabel(kind) {
+  return kind === "bionic" ? "бионический" : "обычный";
+}
+
+function renderHistory() {
+  const rows = loadHistory();
+  if (!rows.length) return "";
+  const body = rows
+    .map((row) => {
+      const when = new Date(row.at).toLocaleString("ru-RU", {
+        day: "2-digit",
+        month: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit",
+      });
+      const first = fontLabel(row.first);
+      return `<tr>
+        <td>${escapeHtml(when)}</td>
+        <td>${escapeHtml(first)}</td>
+        <td>${formatTime(row.regularMs)} · ${row.regularWpm} сл/мин · ${row.regularScore}/${row.regularMax}</td>
+        <td>${formatTime(row.bionicMs)} · ${row.bionicWpm} сл/мин · ${row.bionicScore}/${row.bionicMax}</td>
+      </tr>`;
+    })
+    .join("");
+  return `
+    <div class="history">
+      <h2>История попыток</h2>
+      <p class="note">Только на этом устройстве и в этом браузере.</p>
+      <div class="history-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th>Когда</th>
+              <th>Первым</th>
+              <th>Обычный</th>
+              <th>Бионический</th>
+            </tr>
+          </thead>
+          <tbody>${body}</tbody>
+        </table>
+      </div>
+      <button class="ghost" id="clearHistory" type="button">Очистить историю</button>
+    </div>
+  `;
 }
 
 function renderResults() {
@@ -268,15 +386,16 @@ function renderResults() {
   const percent = a ? Math.round((Math.abs(diff) / a) * 100) : 0;
   let verdict;
   if (diff > 400) {
-    verdict = `Бионический абзац вы прочитали быстрее на ${formatTime(diff)} (${percent}%).`;
+    verdict = `Бионический абзац вы прочитали быстрее на ${formatTime(diff)} (${percent}%). Первым был ${fontLabel(state.order[0])} шрифт.`;
   } else if (diff < -400) {
-    verdict = `Обычный абзац вы прочитали быстрее на ${formatTime(Math.abs(diff))} (${percent}%).`;
+    verdict = `Обычный абзац вы прочитали быстрее на ${formatTime(Math.abs(diff))} (${percent}%). Первым был ${fontLabel(state.order[0])} шрифт.`;
   } else {
-    verdict = "По времени оба абзаца получились почти одинаково.";
+    verdict = `По времени оба абзаца получились почти одинаково. Первым был ${fontLabel(state.order[0])} шрифт.`;
   }
 
   const regular = state.texts.regular;
   const bionic = state.texts.bionic;
+
   stage.innerHTML = `
     <section class="card">
       <h2>Результат</h2>
@@ -284,18 +403,19 @@ function renderResults() {
         <div class="result">
           <span>Обычный шрифт</span>
           <strong>${formatTime(a)}</strong>
-          <p class="meta">${wordsPerMinute(wordCount(regular.body), a)} слов/мин · вопросы ${state.scores.regular}/${regular.questions.length}</p>
+          <p class="meta">${wordsPerMinute(wordCount(regular.body), a)} слов/мин · вопросы ${state.scores.regular}/${regular.questions.length || 0}</p>
         </div>
         <div class="result">
           <span>Бионический шрифт</span>
           <strong>${formatTime(b)}</strong>
-          <p class="meta">${wordsPerMinute(wordCount(bionic.body), b)} слов/мин · вопросы ${state.scores.bionic}/${bionic.questions.length}</p>
+          <p class="meta">${wordsPerMinute(wordCount(bionic.body), b)} слов/мин · вопросы ${state.scores.bionic}/${bionic.questions.length || 0}</p>
         </div>
       </div>
       <div class="verdict"><p>${verdict}</p></div>
-      <p class="answers">Источники: ${sourceLink(regular)} и ${sourceLink(bionic)}. Тексты — CC BY-SA, русская Википедия. Один проход — личное сравнение, не научный вывод.</p>
+      <p class="answers">Источник: ${sourceLink(state.texts)}. Два абзаца одной статьи, CC BY-SA. Вопросы проверяют, что вы читали именно этот кусок, а не соседний.</p>
+      ${renderHistory()}
       <div class="actions">
-        <button class="primary" id="restart">Новые тексты</button>
+        <button class="primary" id="restart">Ещё попытка</button>
       </div>
     </section>
   `;
@@ -303,12 +423,21 @@ function renderResults() {
   document.getElementById("restart").onclick = async () => {
     state.view = "intro";
     state.texts = null;
+    state.pass = 0;
     state.elapsed = { regular: null, bionic: null };
     state.scores = { regular: null, bionic: null };
     render();
     await prepareTexts();
     render();
   };
+
+  const clearBtn = document.getElementById("clearHistory");
+  if (clearBtn) {
+    clearBtn.onclick = () => {
+      clearHistory();
+      render();
+    };
+  }
 }
 
 render();

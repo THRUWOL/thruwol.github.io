@@ -266,6 +266,42 @@ h2 {
   color: var(--muted);
 }
 
+.history {
+  margin: 8px 0 22px;
+  padding-top: 8px;
+  border-top: 1px solid var(--line);
+}
+
+.history h2 {
+  margin-bottom: 4px;
+}
+
+.history-scroll {
+  overflow-x: auto;
+  margin: 0 0 14px;
+}
+
+.history table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.history th,
+.history td {
+  text-align: left;
+  vertical-align: top;
+  padding: 8px 10px 8px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.history th {
+  color: var(--muted);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
 @media (max-width: 700px) {
   .top,
   .results {
