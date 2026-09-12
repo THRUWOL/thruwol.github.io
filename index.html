@@ -3,28 +3,52 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Тест бионического чтения</title>
+  <title>Лаборатория Никиты Яроша</title>
+  <meta name="description" content="Одностраничные эксперименты, тексты и вычисления." />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,650&family=Manrope:wght@400;500;600;700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600;8..60,700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,650&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="shared/site.css" />
 </head>
 <body>
-  <div class="page">
-    <header class="top">
-      <div>
-        <p class="eyebrow">Сравнение двух способов чтения</p>
-        <h1>Бионический шрифт</h1>
-      </div>
-      <div class="timer" id="timer" aria-live="polite">
-        <span class="timer-label">Секундомер</span>
-        <span class="timer-digits" id="timerDigits">00:00.0</span>
-      </div>
-    </header>
+  <header class="site-bar">
+    <a class="site-mark" href="./">
+      <span class="site-name">Никита Ярош</span>
+      <span class="site-lab">лаборатория</span>
+    </a>
+    <nav class="site-nav">
+      <a href="#experiments">Эксперименты</a>
+    </nav>
+  </header>
 
-    <main class="stage" id="stage"></main>
-  </div>
-  <script src="wiki.js"></script>
-  <script src="app.js"></script>
+  <main class="wrap">
+    <section class="hero">
+      <h1>Песочница для идей</h1>
+      <p>Сюда будут попадать короткие самостоятельные штуки: тесты, статьи, расчёты. Каждая живёт в своей папке и не мешает остальным.</p>
+    </section>
+
+    <section class="grid" id="experiments">
+      <a class="tile" href="experiments/bionic-reading/">
+        <span class="tag">Чтение</span>
+        <h2>Бионический шрифт</h2>
+        <p>Сравните обычный и бионический текст по скорости и пониманию. Тексты каждый раз новые — из Википедии.</p>
+        <span class="tile-go">Открыть эксперимент →</span>
+      </a>
+      <article class="tile soon">
+        <span class="tag wait">Скоро</span>
+        <h2>Вычисления</h2>
+        <p>Место для одностраничных калькуляторов, моделей и черновиков формул.</p>
+        <span class="tile-go">Папка ещё пустая</span>
+      </article>
+      <article class="tile soon">
+        <span class="tag wait">Скоро</span>
+        <h2>Заметки</h2>
+        <p>Короткие материалы, которые не тянут на блог, но хочется сохранить рядом с экспериментами.</p>
+        <span class="tile-go">Папка ещё пустая</span>
+      </article>
+    </section>
+  </main>
+
+  <footer class="site-foot">yaroshnikita.online · новый эксперимент = новая папка в experiments/</footer>
 </body>
 </html>

@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Бионический шрифт — лаборатория</title>
+  <meta name="description" content="Сравнение обычного и бионического чтения с секундомером и вопросами." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,650&family=Manrope:wght@400;500;600;700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600;8..60,700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="../../shared/site.css" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="site-bar">
+    <a class="site-mark" href="../../">
+      <span class="site-name">Никита Ярош</span>
+      <span class="site-lab">лаборатория</span>
+    </a>
+    <nav class="site-nav">
+      <a href="../../#experiments">Все эксперименты</a>
+    </nav>
+  </header>
+
+  <div class="page">
+    <header class="top">
+      <div>
+        <p class="eyebrow">Эксперимент · сравнение двух способов чтения</p>
+        <h1>Бионический шрифт</h1>
+      </div>
+      <div class="timer" id="timer" aria-live="polite">
+        <span class="timer-label">Секундомер</span>
+        <span class="timer-digits" id="timerDigits">00:00.0</span>
+      </div>
+    </header>
+
+    <main class="stage" id="stage"></main>
+  </div>
+  <script src="wiki.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
