@@ -20,10 +20,26 @@ function unique(list) {
   return [...new Set(list)];
 }
 
+function looksLikeMarkup(text) {
+  const t = text.replace(/\s+/g, " ");
+  if (/mw-parser-output|user-select\s*:|text-decoration\s*:|display\s*:\s*inline|font-size\s*:/i.test(t)) {
+    return true;
+  }
+  if (/\\(?:frac|displaystyle|begin|end|mathrm|mathbf|over)\b/.test(t)) return true;
+  if (/\.\w[\w-]*\s*\{/.test(t)) return true;
+  if (/[{}]{2,}/.test(t) && /[:;]/.test(t)) return true;
+  const letters = (t.match(/[A-Za-zА-Яа-яЁё]/g) || []).length;
+  const symbols = (t.match(/[{}\\<>_=]/g) || []).length;
+  return letters > 20 && symbols / letters > 0.12;
+}
+
 function cleanExtract(raw) {
   if (!raw) return "";
   return raw
     .replace(/\u0301/g, "")
+    .replace(/\[\d+\]/g, " ")
+    .replace(/\[(?:англ|фр|нем|итал|исп|лат|яп|кит)\.?\]/gi, " ")
+    .replace(/►/g, " ")
     .replace(/\([^)]{0,90}\)/g, (chunk) =>
       /[A-Za-z]{4,}/.test(chunk) && !/[А-Яа-яЁё]{6,}/.test(chunk) ? "" : chunk
     )
@@ -39,7 +55,7 @@ function splitSentences(text) {
   return text
     .split(/(?<=[.!?…])\s+(?=[«"A-ZА-ЯЁ])/)
     .map((s) => s.trim())
-    .filter((s) => s.length > 20 && /[.!?]$/.test(s));
+    .filter((s) => s.length > 20 && /[.!?]$/.test(s) && !looksLikeMarkup(s));
 }
 
 function takeChunk(sentences, start, target = TARGET_WORDS) {
@@ -146,6 +162,39 @@ function pageUrl(title) {
   return `https://ru.wikipedia.org/wiki/${encodeURIComponent(title.replace(/ /g, "_"))}`;
 }
 
+function stripWikiChrome(doc) {
+  const junk = [
+    "style",
+    "script",
+    "noscript",
+    "math",
+    "pre",
+    "code",
+    "table",
+    "figure",
+    ".mwe-math-element",
+    ".mwe-math-fallback-source-inline",
+    ".mwe-math-fallback-image-inline",
+    ".texhtml",
+    "sup.reference",
+    ".mw-editsection",
+    ".hatnote",
+    ".dablink",
+    ".ts-Переход",
+    ".navbox",
+    ".infobox",
+    ".thumb",
+    ".sidebar",
+    ".mw-empty-elt",
+    ".noprint",
+    ".mw-highlight",
+    "[typeof='mw:Extension/templatestyles']",
+  ];
+  junk.forEach((selector) => {
+    doc.querySelectorAll(selector).forEach((node) => node.remove());
+  });
+}
+
 async function fetchArticlePlain(title) {
   const data = await wikiQuery({
     action: "parse",
@@ -156,10 +205,13 @@ async function fetchArticlePlain(title) {
   });
   const html = data.parse?.text;
   if (!html) return "";
-  const doc = new DOMParser().parseFromString(html, "text/html");
-  return [...doc.querySelectorAll("p")]
-    .map((node) => cleanExtract(node.textContent.replace(/\[\d+\]/g, " ")))
-    .filter((para) => wordCount(para) >= 18)
+  const doc = new DOMParser().parseFromString(`<div class="mw-parser-output">${html}</div>`, "text/html");
+  stripWikiChrome(doc);
+  const root = doc.querySelector(".mw-parser-output") || doc.body;
+  return [...root.querySelectorAll("p")]
+    .filter((node) => !node.closest("table, .infobox, .navbox, .thumb"))
+    .map((node) => cleanExtract(node.textContent))
+    .filter((para) => wordCount(para) >= 18 && !looksLikeMarkup(para))
     .join(" ");
 }
 
