@@ -4,6 +4,11 @@
   padding: 8px 20px 64px;
 }
 
+.stage {
+  display: grid;
+  gap: 14px;
+}
+
 .top {
   position: sticky;
   top: 0;
@@ -96,7 +101,7 @@ h2 {
 .steps {
   display: grid;
   gap: 10px;
-  margin: 0 0 24px;
+  margin: 0;
   padding: 0;
   list-style: none;
 }
@@ -173,6 +178,59 @@ h2 {
 
 .passage b {
   font-weight: 700;
+}
+
+.bionic-tail {
+  font-weight: 400;
+}
+
+.passage.preview {
+  margin: 0 0 22px;
+  padding: 16px 18px;
+  font-size: 19px;
+  background: #fff;
+  border: 1px solid var(--line);
+}
+
+.settings-card .note {
+  margin-bottom: 16px;
+}
+
+.setting {
+  margin: 0 0 16px;
+}
+
+.setting-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: baseline;
+  font-size: 15px;
+  font-weight: 650;
+}
+
+.setting-hint {
+  margin: 6px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.setting input[type="range"] {
+  display: block;
+  width: 100%;
+  margin: 10px 0 0;
+  accent-color: var(--ink);
+}
+
+.setting select {
+  display: block;
+  width: 100%;
+  margin-top: 8px;
+  padding: 10px 12px;
+  font: inherit;
+  color: var(--ink);
+  background: #fff;
+  border: 1px solid var(--line);
 }
 
 .meta {
@@ -300,6 +358,12 @@ h2 {
   font-size: 11px;
   letter-spacing: 0.08em;
   text-transform: uppercase;
+}
+
+.history-settings {
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 12px;
 }
 
 @media (max-width: 700px) {

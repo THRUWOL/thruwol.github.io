@@ -1,5 +1,8 @@
 const HISTORY_KEY = "bionic-lab-attempts-v1";
+const SETTINGS_KEY = "bionic-lab-settings-v1";
 const HISTORY_MAX = 20;
+const PREVIEW_TEXT = "Бионический шрифт выделяет начало слов, чтобы взгляд цеплялся за якоря и мозг достраивал хвост.";
+const FIXATION_RATIO = [0.28, 0.36, 0.44, 0.55, 0.68];
 
 const state = {
   view: "intro",
@@ -15,6 +18,7 @@ const state = {
   startedAt: 0,
   acc: 0,
   tick: null,
+  settings: loadSettings(),
 };
 
 const stage = document.getElementById("stage");
@@ -29,20 +33,56 @@ function escapeHtml(value) {
     .replace(/"/g, "&quot;");
 }
 
-function fixationCount(len) {
-  if (len <= 3) return 1;
-  if (len <= 6) return 2;
-  if (len <= 9) return 3;
-  if (len <= 12) return 4;
-  return Math.ceil(len * 0.4);
+function loadSettings() {
+  try {
+    const raw = JSON.parse(localStorage.getItem(SETTINGS_KEY) || "{}");
+    return {
+      fixation: clampInt(raw.fixation, 1, 5, 3),
+      opacity: clampInt(raw.opacity, 40, 100, 80),
+      every: clampInt(raw.every, 1, 3, 1),
+    };
+  } catch (_error) {
+    return { fixation: 3, opacity: 80, every: 1 };
+  }
 }
 
-function toBionic(text) {
+function clampInt(value, min, max, fallback) {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return fallback;
+  return Math.min(max, Math.max(min, Math.round(n)));
+}
+
+function saveSettings() {
+  localStorage.setItem(SETTINGS_KEY, JSON.stringify(state.settings));
+}
+
+function fixationCount(len, level = state.settings.fixation) {
+  if (len <= 1) return 1;
+  const n = Math.ceil(len * FIXATION_RATIO[level - 1]);
+  return Math.min(len, Math.max(1, n));
+}
+
+function toBionic(text, settings = state.settings) {
+  let index = 0;
+  const opacity = settings.opacity / 100;
   return text.replace(/([A-Za-zА-Яа-яЁё]+)|([^A-Za-zА-Яа-яЁё]+)/g, (all, word, other) => {
     if (other) return escapeHtml(other);
-    const n = Math.min(fixationCount(word.length), word.length);
-    return `<b>${escapeHtml(word.slice(0, n))}</b>${escapeHtml(word.slice(n))}`;
+    index += 1;
+    if (settings.every > 1 && index % settings.every !== 1) {
+      return `<span class="bionic-tail" style="opacity:${opacity}">${escapeHtml(word)}</span>`;
+    }
+    const n = Math.min(fixationCount(word.length, settings.fixation), word.length);
+    const head = `<b>${escapeHtml(word.slice(0, n))}</b>`;
+    const tail = word.slice(n);
+    if (!tail) return head;
+    return `${head}<span class="bionic-tail" style="opacity:${opacity}">${escapeHtml(tail)}</span>`;
   });
+}
+
+function settingsLabel(settings = state.settings) {
+  const every =
+    settings.every === 1 ? "каждое слово" : settings.every === 2 ? "через одно" : "каждое третье";
+  return `выделение ${settings.fixation}, хвост ${settings.opacity}%, ${every}`;
 }
 
 function formatTime(ms) {
@@ -187,6 +227,7 @@ function persistHistory() {
     regularMax: regular.questions.length,
     bionicMax: bionic.questions.length,
     faster,
+    settings: { ...state.settings },
   });
 }
 
@@ -201,6 +242,7 @@ function renderIntro() {
   resetTimer();
   const busy = state.loading;
   const tries = loadHistory().length;
+  const s = state.settings;
   stage.innerHTML = `
     <section class="card">
       <h2>Как проходит тест</h2>
@@ -210,12 +252,45 @@ function renderIntro() {
         <li><span class="num">2</span><span>Секундомер стартует вместе с текстом. Прочитайте абзац один раз.</span></li>
         <li><span class="num">3</span><span>Ответьте на вопросы. Затем второй абзац в другом начертании.</span></li>
       </ol>
+    </section>
+    <section class="card settings-card">
+      <h2>Настройка шрифта</h2>
+      <p class="note">Подберите вид до старта — так пойдёт бионический абзац. Настройки запоминаются в браузере.</p>
+      <div class="setting">
+        <div class="setting-row">
+          <span>Выделение начала</span>
+          <strong id="fixVal">${s.fixation}</strong>
+        </div>
+        <input type="range" id="fixRange" min="1" max="5" step="1" value="${s.fixation}" aria-label="Выделение начала слова" />
+        <p class="setting-hint">1 — чуть-чуть, 5 — почти всё слово жирное.</p>
+      </div>
+      <div class="setting">
+        <div class="setting-row">
+          <span>Хвост слова</span>
+          <strong id="opVal">${s.opacity}%</strong>
+        </div>
+        <input type="range" id="opRange" min="40" max="100" step="5" value="${s.opacity}" aria-label="Прозрачность хвоста слова" />
+        <p class="setting-hint">Ниже — бледнее остаток слова.</p>
+      </div>
+      <div class="setting">
+        <div class="setting-row">
+          <span>Какие слова выделять</span>
+        </div>
+        <select id="everySelect" aria-label="Какие слова выделять">
+          <option value="1"${s.every === 1 ? " selected" : ""}>каждое слово</option>
+          <option value="2"${s.every === 2 ? " selected" : ""}>через одно</option>
+          <option value="3"${s.every === 3 ? " selected" : ""}>каждое третье</option>
+        </select>
+      </div>
+      <p class="setting-hint">Предпросмотр</p>
+      <p class="passage preview" id="bionicPreview"></p>
       <p class="note">${busy ? "Ищу статью, из которой получаются два сопоставимых абзаца…" : state.loadError || (tries ? `Сохранено попыток на этом устройстве: ${tries}.` : "Попытки сохраняются в браузере, чтобы можно было сравнить заходы.")}</p>
       <div class="actions">
         <button class="primary" id="startTest" ${busy ? "disabled" : ""}>${busy ? "Загрузка…" : state.texts ? "Начать чтение" : "Загрузить тексты из Википедии"}</button>
       </div>
     </section>
   `;
+  bindSettings();
   document.getElementById("startTest").onclick = async () => {
     await prepareTexts();
     if (!state.texts) return;
@@ -225,6 +300,35 @@ function renderIntro() {
     state.view = "read";
     render();
   };
+}
+
+function bindSettings() {
+  const fixRange = document.getElementById("fixRange");
+  const opRange = document.getElementById("opRange");
+  const everySelect = document.getElementById("everySelect");
+  const preview = document.getElementById("bionicPreview");
+  if (!fixRange || !opRange || !everySelect || !preview) return;
+
+  const paint = () => {
+    document.getElementById("fixVal").textContent = String(state.settings.fixation);
+    document.getElementById("opVal").textContent = `${state.settings.opacity}%`;
+    preview.innerHTML = toBionic(PREVIEW_TEXT);
+    saveSettings();
+  };
+
+  fixRange.oninput = () => {
+    state.settings.fixation = Number(fixRange.value);
+    paint();
+  };
+  opRange.oninput = () => {
+    state.settings.opacity = Number(opRange.value);
+    paint();
+  };
+  everySelect.onchange = () => {
+    state.settings.every = Number(everySelect.value);
+    paint();
+  };
+  paint();
 }
 
 function renderRead(kind) {
@@ -348,8 +452,9 @@ function renderHistory() {
         minute: "2-digit",
       });
       const first = fontLabel(row.first);
+      const conf = row.settings ? `<div class="history-settings">${escapeHtml(settingsLabel(row.settings))}</div>` : "";
       return `<tr>
-        <td>${escapeHtml(when)}</td>
+        <td>${escapeHtml(when)}${conf}</td>
         <td>${escapeHtml(first)}</td>
         <td>${formatTime(row.regularMs)} · ${row.regularWpm} сл/мин · ${row.regularScore}/${row.regularMax}</td>
         <td>${formatTime(row.bionicMs)} · ${row.bionicWpm} сл/мин · ${row.bionicScore}/${row.bionicMax}</td>
@@ -412,7 +517,7 @@ function renderResults() {
         </div>
       </div>
       <div class="verdict"><p>${verdict}</p></div>
-      <p class="answers">Источник: ${sourceLink(state.texts)}. Два абзаца одной статьи, CC BY-SA. Вопросы проверяют, что вы читали именно этот кусок, а не соседний.</p>
+      <p class="answers">Бионический шрифт: ${escapeHtml(settingsLabel())}. Источник: ${sourceLink(state.texts)}. Два абзаца одной статьи, CC BY-SA. Вопросы проверяют, что вы читали именно этот кусок, а не соседний.</p>
       ${renderHistory()}
       <div class="actions">
         <button class="primary" id="restart">Ещё попытка</button>
