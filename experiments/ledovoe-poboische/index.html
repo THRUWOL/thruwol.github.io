@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <title>Легенда Шахтино — Ледовое побоище</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Manrope:wght@500;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div id="app">
+    <header class="top">
+      <div class="brand">
+        <a class="lab-back" href="../../">← лаборатория</a>
+        <strong>Легенда Шахтино</strong>
+        <span class="sub">Ледовое побоище · 1242</span>
+      </div>
+      <span class="coins" title="Шахтинское золото">🪙 <b id="coin-label">0</b></span>
+    </header>
+
+    <section id="screen-menu" class="screen active">
+      <div class="menu-stage">
+        <div class="panel hero-panel">
+          <div class="ice-ornament" aria-hidden="true"></div>
+          <p class="eyebrow">Пивное море · хмель · лёд</p>
+          <h1>Ледовое<br>побоище</h1>
+          <p class="lede">Баварские рыцари-пивовары лезут на замёрзшее море. Защити священный хмель Шахтино.</p>
+          <div class="stack">
+            <button class="btn primary" type="button" data-go="chars">В бой</button>
+            <button class="btn" type="button" data-go="powerups">Шахтинское золото</button>
+            <button class="btn" type="button" id="btn-mute">Звук: вкл</button>
+          </div>
+        </div>
+        <aside class="board">
+          <p class="eyebrow">Устав на льду</p>
+          <h2>Клавиши</h2>
+          <ul class="keys">
+            <li><span class="keyrow"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd></span> <span>ходьба</span></li>
+            <li><kbd>Пробел</kbd> <span>рывок</span></li>
+            <li><kbd>Q</kbd> <span>отрыжка берсерка (Кирилл)</span></li>
+            <li><kbd>Esc</kbd> <span>пауза</span></li>
+          </ul>
+          <p class="note">Десять минут, события на льду, мини-боссы и барон. Первый забег — разведка: золото и мастерство героя копятся между смертями, как в рогалике.</p>
+        </aside>
+      </div>
+    </section>
+
+    <section id="screen-chars" class="screen" hidden>
+      <div class="sheet">
+        <header class="sheet-head">
+          <p class="eyebrow">Кто встанет на лёд</p>
+          <h2>Выбери героя</h2>
+          <p class="lede">Карта одна — Ледовое побоище. Выбери, кто встанет на лёд.</p>
+        </header>
+        <div id="char-grid" class="grid"></div>
+        <div class="row">
+          <button class="btn" type="button" data-go="menu">Назад</button>
+          <button class="btn primary" type="button" id="btn-start" disabled>На лёд!</button>
+        </div>
+      </div>
+    </section>
+
+    <section id="screen-powerups" class="screen" hidden>
+      <div class="sheet">
+        <header class="sheet-head">
+          <p class="eyebrow">Между забегами</p>
+          <h2>Вечные усиления</h2>
+          <p class="lede">Качай тело, бой и судьбу. Без метапрокачки барон почти недостижим — это нормально.</p>
+        </header>
+        <div id="power-grid" class="grid meta-grid"></div>
+        <div class="row"><button class="btn" type="button" data-go="menu">Назад</button></div>
+      </div>
+    </section>
+
+    <section id="screen-run" class="screen run" hidden>
+      <div class="stage">
+        <canvas id="game" width="1280" height="720"></canvas>
+        <div class="hud-overlay">
+          <div class="hud-top">
+            <div class="hud-left">
+              <div id="hud-name"></div>
+              <div class="bars">
+                <div class="bar hp" title="Здоровье"><i id="hp"></i></div>
+                <div id="hud-hp-text" class="hp-text">0/0</div>
+              </div>
+            </div>
+            <div class="hud-mid">
+              <span id="hud-time">10:00</span>
+              <span id="hud-lv">Ур. 1</span>
+              <span id="hud-map">Ледовое побоище</span>
+            </div>
+            <div class="hud-right">
+              <span id="hud-kills">0 убийств</span>
+              <div class="cd-stack">
+                <span class="cd-name">Рывок</span>
+                <div class="bar dash" id="dash"><i id="dash-i"></i></div>
+              </div>
+              <div class="cd-stack">
+                <span class="cd-name">Берсерк</span>
+                <div class="bar berserk" id="berserk" hidden><i id="berserk-i"></i></div>
+              </div>
+              <button class="btn tiny" type="button" id="btn-mute-run">Звук</button>
+              <button class="btn tiny" type="button" id="btn-pause">Пауза</button>
+            </div>
+          </div>
+          <div class="hud-bottom">
+            <div id="weapons"></div>
+            <div class="bar xp" title="Опыт"><i id="xp"></i></div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <div id="overlay" class="overlay" hidden>
+    <div class="card wood" id="overlay-body"></div>
+  </div>
+
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>
